@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Макросы</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>Макросы</h1>
+        <div class="header-actions">
+            <input type="text" id="search" placeholder="Поиск по теме или словам..." onkeyup="searchMacros()">
+            <div class="header-buttons">
+                <div class="language-selector">
+                    <button onclick="switchLanguage('ru')">Русский</button>
+                    <button onclick="switchLanguage('uz')">Узбекский</button>
+                    <button onclick="switchLanguage('en')">English</button>
+                </div>
+                <button id="theme-selector-btn" onclick="showThemeSelectorModal()">Выбрать тему</button>
+            </div>
+        </div>
+        <button id="add-macro-btn" onclick="showAddMacroModal()">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <div id="macro-list">
+        <!-- Макросы будут добавляться сюда через JS -->
+    </div>
+
+    <!-- Модальное окно для добавления макроса -->
+    <div id="add-macro-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddMacroModal()">&times;</span>
+            <h2>Добавить новый макрос</h2>
+            <label for="language">Выберите язык:</label>
+            <select id="language">
+                <option value="ru">Русский</option>
+                <option value="uz">Узбекский</option>
+                <option value="en">English</option>
+            </select>
+
+            <label for="theme">Введите тему:</label>
+            <input type="text" id="theme" placeholder="Введите название темы">
+
+            <div id="existing-themes">
+                <label for="existing-theme">Выберите существующую тему:</label>
+                <select id="existing-theme">
+                    <option value="">Выберите тему...</option>
+                </select>
+            </div>
+
+            <textarea id="macro-text" placeholder="Введите текст макроса"></textarea>
+
+            <button onclick="addMacro()">Добавить макрос</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для выбора темы -->
+    <div id="theme-selector-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeThemeSelectorModal()">&times;</span>
+            <h2>Выберите тему</h2>
+            <select id="theme-selector">
+                <option value="">Выберите тему...</option>
+            </select>
+            <button onclick="goToTheme()">Перейти к теме</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для подтверждения удаления -->
+    <div id="delete-confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h3>Вы уверены, что хотите удалить этот макрос?</h3>
+            <button onclick="confirmDelete()">Удалить</button>
+            <button onclick="cancelDelete()">Отмена</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
