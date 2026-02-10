@@ -1,6 +1,13 @@
 // Инициализация Firestore
 const db = firebase.firestore();
 
+// Сохранение макросов из Firebase в массив
+let macros = [];
+let themes = [];
+let currentLang = 'ru'; // начальный язык
+let selectedTheme = '';
+let macroToDeleteIndex = null;
+
 // Получение макросов из Firestore
 function getMacrosFromFirebase() {
     db.collection("macros").get()
@@ -52,19 +59,30 @@ function deleteMacroFromFirebase(id) {
         });
 }
 
+// Удаление темы из Firestore
+function deleteThemeFromFirebase(theme) {
+    db.collection("themes").doc(theme).delete()
+        .then(() => {
+            console.log("Тема удалена из Firebase");
+        })
+        .catch((error) => {
+            console.error("Ошибка удаления темы из Firebase: ", error);
+        });
+}
+
 // Обновление функции renderMacros
 function renderMacros() {
     const macroList = document.getElementById('macro-list');
     macroList.innerHTML = '';
     const filteredMacros = macros.filter(macro => macro.lang === currentLang && (selectedTheme ? macro.theme === selectedTheme : true));
 
-    filteredMacros.forEach((macro, index) => {
+    filteredMacros.forEach((macro) => {
         const div = document.createElement('div');
         div.className = 'macro-card';
         div.innerHTML = `
             <div class="macro-header">${macro.name}</div>
             <div class="macro-body">${macro.phrase}</div>
-            <button class="delete-btn" onclick="prepareDeleteMacro(${macro.id})"><i class="fas fa-trash-alt"></i></button>
+            <button class="delete-btn" onclick="prepareDeleteMacro('${macro.id}')"><i class="fas fa-trash-alt"></i></button>
         `;
         div.onclick = function() {
             navigator.clipboard.writeText(macro.phrase);
@@ -81,7 +99,7 @@ function prepareDeleteMacro(id) {
 
 // Подтверждение удаления макроса
 function confirmDelete() {
-    const macroToDelete = macros[macroToDeleteIndex];
+    const macroToDelete = macros.find(macro => macro.id === macroToDeleteIndex);
     deleteMacroFromFirebase(macroToDelete.id); // Удаляем макрос из Firestore
 
     // Удаляем тему, если она больше не используется
@@ -91,17 +109,6 @@ function confirmDelete() {
     }
 
     closeDeleteConfirmationModal();
-}
-
-// Удаление темы из Firestore
-function deleteThemeFromFirebase(theme) {
-    db.collection("themes").doc(theme).delete()
-        .then(() => {
-            console.log("Тема удалена из Firebase");
-        })
-        .catch((error) => {
-            console.error("Ошибка удаления темы из Firebase: ", error);
-        });
 }
 
 // Закрытие окна подтверждения удаления
@@ -126,4 +133,33 @@ function addMacro() {
     }
 
     addMacroToFirebase(name, text, theme, lang); // Добавляем макрос в Firebase
+}
+
+// Функция для поиска макросов по введенному тексту
+function searchMacros() {
+    const searchTerm = document.getElementById('search').value.toLowerCase();
+    const filteredMacros = macros.filter(macro => 
+        (macro.lang === currentLang) && 
+        (macro.name.toLowerCase().includes(searchTerm) || macro.phrase.toLowerCase().includes(searchTerm))
+    );
+    renderFilteredMacros(filteredMacros);
+}
+
+// Отображение отфильтрованных макросов
+function renderFilteredMacros(filteredMacros) {
+    const macroList = document.getElementById('macro-list');
+    macroList.innerHTML = '';
+    filteredMacros.forEach(macro => {
+        const div = document.createElement('div');
+        div.className = 'macro-card';
+        div.innerHTML = `
+            <div class="macro-header">${macro.name}</div>
+            <div class="macro-body">${macro.phrase}</div>
+            <button class="delete-btn" onclick="prepareDeleteMacro('${macro.id}')"><i class="fas fa-trash-alt"></i></button>
+        `;
+        div.onclick = function() {
+            navigator.clipboard.writeText(macro.phrase);
+        };
+        macroList.appendChild(div);
+    });
 }
