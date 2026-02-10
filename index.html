@@ -1,85 +1,129 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Макросы</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="header">
-        <h1>Макросы</h1>
-        <div class="header-actions">
-            <input type="text" id="search" placeholder="Поиск по теме или словам..." onkeyup="searchMacros()">
-            <div class="header-buttons">
-                <div class="language-selector">
-                    <button onclick="switchLanguage('ru')">Русский</button>
-                    <button onclick="switchLanguage('uz')">Узбекский</button>
-                    <button onclick="switchLanguage('en')">English</button>
-                </div>
-                <button id="theme-selector-btn" onclick="showThemeSelectorModal()">Выбрать тему</button>
-            </div>
-        </div>
-        <button id="add-macro-btn" onclick="showAddMacroModal()">
-            <i class="fas fa-plus"></i>
-        </button>
-    </div>
+// Инициализация Firestore
+const db = firebase.firestore();
 
-    <div id="macro-list">
-        <!-- Макросы будут добавляться сюда через JS -->
-    </div>
+// Получение макросов из Firestore
+function getMacrosFromFirebase() {
+    db.collection("macros").get()
+        .then((querySnapshot) => {
+            macros = [];
+            querySnapshot.forEach((doc) => {
+                const macro = doc.data();
+                macros.push({
+                    id: doc.id, // хранить ID документа для удаления
+                    name: macro.name,
+                    phrase: macro.phrase,
+                    theme: macro.theme,
+                    lang: macro.lang
+                });
+            });
+            renderMacros(); // Рендерим макросы после получения из Firestore
+        })
+        .catch((error) => {
+            console.error("Ошибка получения макросов: ", error);
+        });
+}
 
-    <!-- Модальное окно для добавления макроса -->
-    <div id="add-macro-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeAddMacroModal()">&times;</span>
-            <h2>Добавить новый макрос</h2>
-            <label for="language">Выберите язык:</label>
-            <select id="language">
-                <option value="ru">Русский</option>
-                <option value="uz">Узбекский</option>
-                <option value="en">English</option>
-            </select>
+// Добавление макроса в Firestore
+function addMacroToFirebase(name, text, theme, lang) {
+    db.collection("macros").add({
+        name: name,
+        phrase: text,
+        theme: theme,
+        lang: lang
+    })
+    .then(() => {
+        console.log("Макрос добавлен в Firebase");
+        renderMacros(); // Обновляем список макросов
+    })
+    .catch((error) => {
+        console.error("Ошибка добавления макроса в Firebase: ", error);
+    });
+}
 
-            <label for="theme">Введите тему:</label>
-            <input type="text" id="theme" placeholder="Введите название темы">
+// Удаление макроса из Firestore
+function deleteMacroFromFirebase(id) {
+    db.collection("macros").doc(id).delete()
+        .then(() => {
+            console.log("Макрос удален из Firebase");
+            renderMacros(); // Обновляем список макросов после удаления
+        })
+        .catch((error) => {
+            console.error("Ошибка удаления макроса из Firebase: ", error);
+        });
+}
 
-            <div id="existing-themes">
-                <label for="existing-theme">Выберите существующую тему:</label>
-                <select id="existing-theme">
-                    <option value="">Выберите тему...</option>
-                </select>
-            </div>
+// Обновление функции renderMacros
+function renderMacros() {
+    const macroList = document.getElementById('macro-list');
+    macroList.innerHTML = '';
+    const filteredMacros = macros.filter(macro => macro.lang === currentLang && (selectedTheme ? macro.theme === selectedTheme : true));
 
-            <textarea id="macro-text" placeholder="Введите текст макроса"></textarea>
+    filteredMacros.forEach((macro, index) => {
+        const div = document.createElement('div');
+        div.className = 'macro-card';
+        div.innerHTML = `
+            <div class="macro-header">${macro.name}</div>
+            <div class="macro-body">${macro.phrase}</div>
+            <button class="delete-btn" onclick="prepareDeleteMacro(${macro.id})"><i class="fas fa-trash-alt"></i></button>
+        `;
+        div.onclick = function() {
+            navigator.clipboard.writeText(macro.phrase);
+        };
+        macroList.appendChild(div);
+    });
+}
 
-            <button onclick="addMacro()">Добавить макрос</button>
-        </div>
-    </div>
+// Подготовка удаления макроса
+function prepareDeleteMacro(id) {
+    macroToDeleteIndex = id;
+    document.getElementById('delete-confirmation-modal').style.display = 'block';
+}
 
-    <!-- Модальное окно для выбора темы -->
-    <div id="theme-selector-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeThemeSelectorModal()">&times;</span>
-            <h2>Выберите тему</h2>
-            <select id="theme-selector">
-                <option value="">Выберите тему...</option>
-            </select>
-            <button onclick="goToTheme()">Перейти к теме</button>
-        </div>
-    </div>
+// Подтверждение удаления макроса
+function confirmDelete() {
+    const macroToDelete = macros[macroToDeleteIndex];
+    deleteMacroFromFirebase(macroToDelete.id); // Удаляем макрос из Firestore
 
-    <!-- Модальное окно для подтверждения удаления -->
-    <div id="delete-confirmation-modal" class="modal">
-        <div class="modal-content">
-            <h3>Вы уверены, что хотите удалить этот макрос?</h3>
-            <button onclick="confirmDelete()">Удалить</button>
-            <button onclick="cancelDelete()">Отмена</button>
-        </div>
-    </div>
+    // Удаляем тему, если она больше не используется
+    const themeIsUsed = macros.some(macro => macro.theme === macroToDelete.theme);
+    if (!themeIsUsed) {
+        deleteThemeFromFirebase(macroToDelete.theme); // Удаляем тему из Firestore, если она больше не используется
+    }
 
-    <script src="script.js"></script>
-</body>
-</html>
+    closeDeleteConfirmationModal();
+}
+
+// Удаление темы из Firestore
+function deleteThemeFromFirebase(theme) {
+    db.collection("themes").doc(theme).delete()
+        .then(() => {
+            console.log("Тема удалена из Firebase");
+        })
+        .catch((error) => {
+            console.error("Ошибка удаления темы из Firebase: ", error);
+        });
+}
+
+// Закрытие окна подтверждения удаления
+function closeDeleteConfirmationModal() {
+    document.getElementById('delete-confirmation-modal').style.display = 'none';
+}
+
+// Добавление макроса
+function addMacro() {
+    const name = document.getElementById('theme').value || document.getElementById('existing-theme').value;
+    const text = document.getElementById('macro-text').value;
+    const theme = document.getElementById('theme').value || document.getElementById('existing-theme').value;
+    const lang = document.getElementById('language').value;
+
+    if (!text || !theme) {
+        alert('Заполните все поля');
+        return;
+    }
+
+    if (!name) {
+        name = theme;  // если имя не введено, используем имя темы
+    }
+
+    addMacroToFirebase(name, text, theme, lang); // Добавляем макрос в Firebase
+}
